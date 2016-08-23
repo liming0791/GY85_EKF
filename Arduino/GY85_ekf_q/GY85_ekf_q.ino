@@ -22,8 +22,8 @@
   GND           GND
 */
 
-#define N 3     // states, will also be measurement values M
-#define M 3
+#define N 4     // states, will also be measurement values M
+#define M 4
 #include <Wire.h>
 #include <TinyEKF.h>
 #include <ADXL345.h>  // ADXL345 Accelerometer Library
@@ -80,7 +80,7 @@ class Fuser : public TinyEKF {
         this->setR(j, j, .01);
       //Set P
       for (int j = 0; j < N; ++j)
-        this->setP(j, j, 360);
+        this->setP(j, j, 1);
     }
   protected:
     void model(double fx[N], double F[N][N], double hx[M], double H[M][N])
@@ -88,7 +88,7 @@ class Fuser : public TinyEKF {
       //states
       for (int j = 0; j < N; ++j) {
         // Process model is f(x) = x
-        fx[j] = x[j] + looptime * gx_rate / 1000;
+        fx[j] = x[j] /* looptime * gx_rate / 1000*/;
         // So process model Jacobian is identity matrix
         F[j][j] = 1;
       }
@@ -232,9 +232,14 @@ void loop() {
 
   getPose();
 
-  z[0] = rolldeg;
-  z[1] = pitchdeg;
-  z[2] = yawdeg;
+  float a = rolldeg/180.*PI;
+  float b = pitchdeg/180.*PI;
+  float c = yawdeg/180.*PI;
+
+  z[0] = cos(a/2)*cos(b/2)*cos(c/2) + sin(a/2)*sin(b/2)*sin(c/2);
+  z[1] = sin(a/2)*cos(b/2)*cos(c/2) - cos(a/2)*sin(b/2)*sin(c/2);
+  z[2] = cos(a/2)*sin(b/2)*cos(c/2) + sin(a/2)*cos(b/2)*sin(c/2);
+  z[3] = cos(a/2)*cos(b/2)*sin(c/2) - sin(a/2)*sin(b/2)*cos(c/2);
 
   looptime = millis() - time;
   time = millis();
@@ -248,12 +253,14 @@ void loop() {
   Serial.print(",\t");
   Serial.print(ekf.getX(2));
   Serial.print(",\t");
-  Serial.print(rolldeg);
+  Serial.print(ekf.getX(3));
   Serial.print(",\t");
-  Serial.print(pitchdeg);
+  Serial.print(z[0]);
   Serial.print(",\t");
-  Serial.print(yawdeg);
+  Serial.print(z[1]);
   Serial.print(",\t");
-  Serial.println(yawdeg2);
+  Serial.print(z[2]);
+  Serial.print(",\t");
+  Serial.println(z[3]);
   
 }
